@@ -1,0 +1,140 @@
+Erickson R.
+
+  Track project alpha 
+
+4-12-2026
+---------
+
+  Setup Github
+    Fine-grained Token -- Does not work on every case 
+    Classic Token - Works, Allows you to select permition when generateing one
+
+    Remove your current origin:
+    $ git remote remove origin
+    And then:
+    $ git remote add origin https://<TOKEN>@github.com/<USERNAME>/<REPO>.git
+  
+    Github setup complete
+
+4-13-2026
+---------
+
+  Sensor and payload side
+    
+    Cameras, IMU, environmental sensors, ADC-based science payloads.
+
+    fifo_cam   ┐
+    fifo_adc   ├──> payload_mux → DMA → system
+    fifo_imu   ┤
+    fifo_env   ┘
+
+    Record Format 
+      separate internal record boundaries from DMA frame boundaries
+      
+      record0 | record1 | record2 | record3
+      
+      Each Record:
+        Bytes	    Field
+        0..1	    Sync
+        2	        Version
+        3	        Source ID
+        4	        Payload type
+        5	        Flags
+        6..9	    Sequence count
+        10..17	  Timestamp
+        18..19	  Payload length
+        20..23	  Payload info 0
+        24..27	  Payload info 1
+        28..59	  Payload area
+        60..61	  CRC16
+        62..63	  Reserved
+
+
+     Pack many records into one larger DMA frame and 
+     assert TLAST only at the end of that larger block.
+
+      [HDR0][S...][HDR1][S...][HDR2][S...][HDR3][S...] TLAST
+
+
+
+
+-------------------------------------------------------------------------------------------------
+
+System Diagram:
+
+                         +----------------------------------+
+                         |          Ground Station          |
+                         |  GUI / Telemetry / Data Logger   |
+                         +----------------+-----------------+
+                                          |
+                                  Ethernet / Optical / RF
+                                          |
++----------------------------------------------------------------------------------+
+|                              PROJECT ALPHA PLATFORM                              |
+|                                                                                  |
+|  +-------------------+      +---------------------+      +--------------------+  |
+|  |   Sensor Suite    |----->|  Sensor Interfaces  |----->|  Data Acquisition  |  |
+|  |-------------------|      |---------------------|      |   & Time Stamping  |  |
+|  | IMU               |      | SPI / I2C / UART    |      +--------------------+  |
+|  | Cameras           |      | LVDS / MIPI / ADC   |                |             |
+|  | Environmental     |      | GPIO / Encoder IF   |                v             |
+|  | Motor Feedback    |      +---------------------+      +--------------------+  |
+|  | Science Payload   |                                 | Signal Processing /  |  |
+|  +-------------------+                                 | DSP / Filtering /    |  |
+|                                                        | Feature Extraction   |  |
+|                                                        +--------------------+  |
+|                                                                   |             |
+|                                                                   v             |
+|  +-------------------+      +---------------------+      +--------------------+  |
+|  |   Control Plane   |<---->|  FPGA Control /     |<---->|  Command & Mission |  |
+|  |-------------------|      |  Register Map       |      |  Sequencer         |  |
+|  | ARM / RPU / APU   |      | AXI-Lite / DMA      |      | State Machines     |  |
+|  | Housekeeping      |      +---------------------+      +--------------------+  |
+|  | Health Monitoring |                                                    |      |
+|  +-------------------+                                                    v      |
+|                                                                   +--------------------+ |
+|                                                                   | Actuator / Motor   | |
+|                                                                   | Control Interface  | |
+|                                                                   | PWM / DAC / GPIO   | |
+|                                                                   +--------------------+ |
+|                                                                                  |
+|  +-------------------+      +---------------------+      +--------------------+  |
+|  | High-Speed Links  |<---->|  Transceivers /     |<---->| External Modules / |  |
+|  |-------------------|      | Ethernet / Aurora   |      | Expansion / Other  |  |
+|  | 1G/10G Ethernet   |      | PCIe / Serial Links |      | FPGA Nodes         |  |
+|  | SpaceWire-like    |      +---------------------+      +--------------------+  |
+|  | Custom Links      |                                                        |
+|  +-------------------+                                                        |
+|                                                                                  |
+|  +-------------------+      +---------------------+      +--------------------+  |
+|  | Memory Subsystem  |<---->| DMA / Buffering /   |<---->| Data Recorder /    |  |
+|  |-------------------|      | AXI Stream Fabrics  |      | Packet Formatter   |  |
+|  | DDR               |      | Async FIFOs         |      | Compression         |  |
+|  | QSPI / SD / eMMC  |      +---------------------+      +--------------------+  |
+|  +-------------------+                                                        |
+|                                                                                  |
+|  +-------------------+      +---------------------+                             |
+|  | Debug / Test      |<---->| ILA / Built-In Test |                             |
+|  |-------------------|      | Fault Injection     |                             |
+|  | JTAG              |      | Telemetry Counters  |                             |
+|  | UART Console      |      +---------------------+                             |
+|  +-------------------+                                                          |
++----------------------------------------------------------------------------------+
+
+
+Sensors → Interfaces → FPGA acquisition/DSP → mission/control logic → communications/storage/actuators
+
+split Project Alpha into these major subsystems:
+
+1. Sensor and payload side
+Cameras, IMU, environmental sensors, ADC-based science payloads.
+2. FPGA real-time processing side
+AXI Stream pipelines, filters, packet parsers, feature extraction, timing-critical logic.
+3. Control and autonomy side
+ARM/RPU software, mission sequencing, register control, fault handling.
+4. Communications side
+Ethernet first, then higher-speed serial/transceiver-based links.
+5. Storage and telemetry side
+DDR buffering, packetization, logging, transfer to host/ground station.
+6. Verification and debug side
+Testbench, loopback modes, built-in counters, status registers, ILA.
