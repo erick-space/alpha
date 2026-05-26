@@ -1,8 +1,5 @@
 module adc_wrapper #(
-  parameter int DATA_W = 32,
-  parameter int KEEP_W = DATA_W/8,
-  parameter int ID_W   = 4,
-  parameter int USER_W = 16
+  parameter int DATA_W = 16
 )(
   input  logic clk,
   input  logic rst_n,
@@ -14,11 +11,45 @@ module adc_wrapper #(
   axis_if.master m_axis
 );
 
-  assign m_axis.tdata  = adc_data;
-  assign m_axis.tkeep  = '1;
-  assign m_axis.tid    = 'd0;
-  assign m_axis.tuser  = '0;
-  assign m_axis.tvalid = adc_valid;
-  assign m_axis.tlast  = adc_last;
+
+// ------------------------------------------------------------
+// ADC data
+// ------------------------------------------------------------
+  
+  // Sample and transfer samples from ADC
+  always_ff (@posedge clk) begin
+    m_axis.tvalid <= adc_valid;
+    m_axis.tdata <= adc_valid;
+    m_axis.adc_last <= adc_last;
+  end 
+
+
+// ------------------------------------------------------------
+// Sample Generator for debugging
+// ------------------------------------------------------------
+
+  logic [DATA_W-1:0] counter;
+  logic [7:0] sample_counter;
+  always_ff (@posedge clk) begin
+    if (!rst_n) 
+      counter <= 16'd0;
+      sample_counter <= 16'd0;
+      sample_valid <= 1'b1;
+    else begin 
+      sample_valid <= 1'b0;
+      if (sample_counter = 9) begin
+        counter <= counter + 16'd1;
+        sample_valid <= 1'b1;
+      end else 
+        sample_counter <= sample_counter + 16'd1;
+    end 
+  end
+  
+  // Assign output
+  // assign m_axis.tvalid = sample_valid;
+  // assign m_axis.tdata = counter;
+
+
+
 
 endmodule

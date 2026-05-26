@@ -1,8 +1,5 @@
 module axis_fifo #(
   parameter int DATA_W = 32,
-  parameter int KEEP_W = DATA_W/8,
-  parameter int ID_W   = 4,
-  parameter int USER_W = 16,
   parameter int DEPTH  = 256
 )(
   input  logic clk,
@@ -21,9 +18,6 @@ module axis_fifo #(
   assign s_axis.tready = m_axis.tready;
 
   assign m_axis.tdata  = s_axis.tdata;
-  assign m_axis.tkeep  = s_axis.tkeep;
-  assign m_axis.tid    = s_axis.tid;
-  assign m_axis.tuser  = s_axis.tuser;
   assign m_axis.tvalid = s_axis.tvalid;
   assign m_axis.tlast  = s_axis.tlast;
 

@@ -29,25 +29,39 @@ Erickson R.
     fifo_env   ┘
 
     Record Format 
-      separate internal record boundaries from DMA frame boundaries
+          source ID
+          packet type
+          packet sequence 
+          timestamp of first sample
+          payload byte count
+          sample count
+          Payload 
+        
       
       record0 | record1 | record2 | record3
       
-      Each Record:
-        Bytes	    Field
-        0..1	    Sync
-        2	        Version
-        3	        Source ID
-        4	        Payload type
-        5	        Flags
-        6..9	    Sequence count
-        10..17	  Timestamp
-        18..19	  Payload length
-        20..23	  Payload info 0
-        24..27	  Payload info 1
-        28..59	  Payload area
-        60..61	  CRC16
-        62..63	  Reserved
+
+      Example packet
+        Packet header
+          source ID = ADC0
+          packet type = sampled data
+          packet sequence number
+          timestamp of first sample
+          payload byte count
+          sample count
+          Payload
+
+
+
+      Here is what I'm planning so far: 
+      Create records as Data arrives. Each record contains Header + Payload. 
+      A Packet will contain multiple record with tlast signal indicating the end of the packet. 
+      Here is how data will be buffered: 
+      Record will be written to a Packet driven FIFO. 
+      This mean the FIFO will release the data when full packet is 
+      constructed (when tlast is asserted). In other words FIFO tvalid 
+      signal is avaible when a complete packet is in the FIFO. FIFO size will be deep 
+      so it can hold 2 or more packets so the arbiter can go around without lossing any data.
 
 
      Pack many records into one larger DMA frame and 
@@ -56,12 +70,21 @@ Erickson R.
       [HDR0][S...][HDR1][S...][HDR2][S...][HDR3][S...] TLAST
 
 
+    Payload Verification
+    - Packet contains header and payload?
+    - Packet length is as expected?
+    - Number of records in a packet is equal to expected record?
+    - What happens  when writting to a full fifo?
+    - Does back to back packet works? 
+    - Is the information in the header filed correct?
+
+
 
 
 -------------------------------------------------------------------------------------------------
 
 System Diagram:
-
+ 
                          +----------------------------------+
                          |          Ground Station          |
                          |  GUI / Telemetry / Data Logger   |
@@ -138,3 +161,11 @@ Ethernet first, then higher-speed serial/transceiver-based links.
 DDR buffering, packetization, logging, transfer to host/ground station.
 6. Verification and debug side
 Testbench, loopback modes, built-in counters, status registers, ILA.
+
+
+
+
+      Should I go design for Gbsp
+      GSPS ADC samples data at GHZ and parallized it before reaching FPGA. 
+      o instead of thinking: “1 sample every 250 ps at 4 GSPS”
+      think: “8 samples every 2 ns” or "16 samples every 4 ns”
